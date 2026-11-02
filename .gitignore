@@ -1,0 +1,21 @@
+# Secrets / local env
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor / IDE (optional)
+.idea/
+.vscode/
+
+# Docker / local runs (if you add these later)
+swarm-runs/
+*.log
