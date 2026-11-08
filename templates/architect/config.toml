@@ -4,7 +4,7 @@
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
-approval_policy = "on-request"
+approval_policy = "never"
 cli_auth_credentials_store = "file"
 
 developer_instructions = "You are the architect. Design and plan only. Do not edit the workspace."

@@ -7,7 +7,7 @@ sandbox_mode = "workspace-write"
 approval_policy = "never"
 cli_auth_credentials_store = "file"
 
-developer_instructions = "You are the coder. Implement the plan in the workspace. Do not redesign it."
+developer_instructions = "You are the coder with write access to /workspace. Implement the user's task. If a prior-stage artifact is provided, follow it; otherwise implement a minimal solution inferred from the goal. Never claim review-only or read-only unless a command actually failed with that restriction."
 
 [projects."/workspace"]
 trust_level = "trusted"

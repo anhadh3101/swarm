@@ -1,11 +1,11 @@
 import os, redis
+from redis import Redis
 
 DEFAULT_REDIS_URL = "redis://redis:6379/0"
 
-_client: redis.Redis | None = None
+_client: Redis | None = None
 
-
-def get_redis() -> redis.Redis:
+def get_redis() -> Redis:
     global _client
     if _client is None:
         url = os.environ.get("REDIS_URL", DEFAULT_REDIS_URL)

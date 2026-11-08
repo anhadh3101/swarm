@@ -7,16 +7,18 @@ from starlette.responses import JSONResponse
 from model import TaskMessage, task_stream
 from redis_client import get_redis
 
+# Initialize the FastMCP server
 mcp = FastMCP(
     "swarm-redis",
     host=os.environ.get("MCP_HOST", "127.0.0.1"),
     port=int(os.environ.get("MCP_PORT", "9001")),
 )
 
-
+# Endpoint to check the health of the server
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_request: Request) -> JSONResponse:
     try:
+        # Ping the redis client, if it fails then redis isn't connected
         get_redis().ping()
     except Exception as exc:
         return JSONResponse(
@@ -36,11 +38,6 @@ def publish_task(
     """Publish a job to tasks:<role> (architect, coder, reviewer). Returns Redis message id."""
     msg = TaskMessage(run_id=run_id, job_id=job_id, payload=payload)
     return get_redis().xadd(task_stream(role), msg.to_redis_fields())
-
-@mcp.tool()
-def stream_add(stream: str, fields: dict[str, str]) -> str:
-    """XADD arbitrary string fields to any stream. Returns message id."""
-    return get_redis().xadd(stream, fields)
 
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")

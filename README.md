@@ -17,6 +17,12 @@ docker compose up -d
 # One-time login (shared codex-home volume across workers):
 docker compose run --rm --entrypoint codex architect login --device-auth
 
+# Alternative: `scripts/docker-workers.sh` uses separate Codex volumes per role
+# (`swarm-codex-architect`, `swarm-codex-coder`, `swarm-codex-reviewer`) so configs do not
+# overwrite each other. Log in once per volume you need, e.g. for coder:
+# docker run --rm -it --network swarm -v swarm-codex-coder:/codex-home -e CODEX_HOME=/codex-home \
+#   --entrypoint codex coder login --device-auth
+
 # Start a pipeline (architect → coder → reviewer via orchestrator):
 docker compose exec redis redis-cli XADD tasks:architect '*' \
   run_id demo-1 job_id job-1 \
@@ -25,7 +31,7 @@ docker compose exec redis redis-cli XADD tasks:architect '*' \
 docker compose logs -f orchestrator architect coder reviewer
 ```
 
-The repo root is mounted at `/workspace` in each agent container.
+Architect and reviewer mount the **repo root** at `/workspace` (read-only). When using `scripts/docker-workers.sh`, the **coder** uses a Docker volume (`swarm-coder-workspace` by default) for `/workspace` so builds are **not** written to your host checkout. Copy sources into that volume first if needed, e.g. `docker run --rm -v swarm-coder-workspace:/out -v "$PWD":/src alpine cp -a /src/. /out/`.
 
 ## Streams
 

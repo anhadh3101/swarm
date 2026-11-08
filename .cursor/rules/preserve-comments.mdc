@@ -1,0 +1,22 @@
+---
+description: When editing any file, do not alter or delete existing comments
+alwaysApply: false
+---
+
+# Preserve existing comments
+
+When you edit a file, leave every comment that is already in it unchanged.
+
+- Do not delete, rewrite, reword, reformat, or move an existing comment.
+- Do not clean up comments while changing nearby code.
+- Comments you add in the same edit are fine. Leave prior comments exactly as written.
+
+```python
+# ❌ BAD — existing comment rewritten while changing the call
+# Fetch the user record from the cache
+user = cache.get(user_id)
+
+# ✅ GOOD — existing comment left character for character
+# grab user from redis
+user = cache.get(user_id)
+```
