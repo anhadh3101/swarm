@@ -2,19 +2,19 @@
 # Build worker images and start containers.
 #
 # Each role uses its OWN Codex home volume so entrypoint.sh does not overwrite config.toml
-# across architect / coder / reviewer (which caused coder to read reviewer's read-only config).
-# Volumes: swarm-codex-architect, swarm-codex-coder, swarm-codex-reviewer, swarm-coder-workspace
+# across coder / reviewer (which caused coder to read reviewer's read-only config).
+# Volumes: swarm-codex-coder, swarm-codex-reviewer, swarm-coder-workspace
 #
 # If repo-root .env exists, it is passed to each container (e.g. OPENAI_API_KEY for Codex).
 # Codex login: run once per role (each volume needs auth), e.g.:
 #   docker run --rm -it --network swarm -v swarm-codex-coder:/codex-home -e CODEX_HOME=/codex-home \
 #     --entrypoint codex coder login --device-auth
 #
-# Coder gets CODEX_FLAGS to bypass Codex's Linux sandbox (bubblewrap) inside Docker. Architect &
-# reviewer stay sandboxed (read-only workspace mounts).
+# Coder gets CODEX_FLAGS to bypass Codex's Linux sandbox (bubblewrap) inside Docker. Reviewer
+# stays sandboxed (read-only workspace mount).
 #
 # Coder /workspace: Docker volume (default swarm-coder-workspace), NOT the host repo — builds
-# stay inside Docker. Architect & reviewer still mount the repo read-only for context.
+# stay inside Docker. Reviewer still mounts the repo read-only for context.
 # Override: SWARM_CODER_WORKSPACE_VOLUME=my-vol env var before running this script.
 set -euo pipefail
 
@@ -32,7 +32,6 @@ fi
 
 codex_volume_for() {
   case "$1" in
-    architect) echo "swarm-codex-architect" ;;
     coder) echo "swarm-codex-coder" ;;
     reviewer) echo "swarm-codex-reviewer" ;;
     *) echo "swarm-codex-${1}" ;;
@@ -89,10 +88,8 @@ docker_run_worker() {
   fi
 }
 
-docker build -t architect templates/architect
 docker build -t coder templates/coder
 docker build -t reviewer templates/reviewer
 
-docker_run_worker architect architect ro
 docker_run_worker coder coder rw
 docker_run_worker reviewer reviewer ro

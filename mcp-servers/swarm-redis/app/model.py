@@ -1,27 +1,31 @@
-import json
-from typing import Any
-
-from pydantic import BaseModel, Field
-
-
-def task_stream(role: str) -> str:
-    return f"tasks:{role}"
+EVENTS = "events"
+MESSAGES = "messages"
+TASKS_CODER = "tasks:coder"
+TASKS_REVIEWER = "tasks:reviewer"
 
 
-class TaskMessage(BaseModel):
-    run_id: str
-    job_id: str
-    payload: str | dict[str, Any] = Field(
-        description="JSON string or object; stored as a string in Redis."
-    )
+def event_fields(trace_id: str, start_time: str, turns: str, prompt: str, repo_url: str) -> dict[str, str]:
+    return {
+        "traceID": trace_id,
+        "startTime": start_time,
+        "turns": turns,
+        "prompt": prompt,
+        "repoUrl": repo_url,
+    }
 
-    def to_redis_fields(self) -> dict[str, str]:
-        if isinstance(self.payload, str):
-            payload_str = self.payload
-        else:
-            payload_str = json.dumps(self.payload)
-        return {
-            "run_id": self.run_id,
-            "job_id": self.job_id,
-            "payload": payload_str,
-        }
+
+def message_fields(trace_id: str, message_num: str, body: str) -> dict[str, str]:
+    return {
+        "traceID": trace_id,
+        "messageNum": message_num,
+        "body": body,
+    }
+
+
+def task_fields(trace_id: str, prompt: str, repo_url: str, from_role: str) -> dict[str, str]:
+    return {
+        "traceID": trace_id,
+        "prompt": prompt,
+        "repoUrl": repo_url,
+        "from": from_role,
+    }
