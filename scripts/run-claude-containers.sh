@@ -4,7 +4,7 @@
 #        ./scripts/run-claude-containers.sh reviewer
 # Run each role in its own terminal. Requires repo-root .env and swarm images
 # built from templates, e.g. docker build -t swarm-coder templates/coder
-# Each image ships role instructions at /opt/swarm/role-prompt.md for Claude.
+# Each image ships role instructions in ~/.claude/CLAUDE.md (loaded automatically).
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -18,7 +18,7 @@ docker_run_claude() {
     -v "${CLAUDE_VOL}:/home/agent/.claude" \
     -e CLAUDE_CONFIG_DIR=/home/agent/.claude \
     "${image}" \
-    bash -lc 'claude --dangerously-skip-permissions --system-prompt "$(cat /opt/swarm/role-prompt.md)"'
+    bash -lc 'claude --dangerously-skip-permissions'
 }
 
 case "${1:-}" in

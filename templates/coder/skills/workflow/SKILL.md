@@ -5,14 +5,14 @@ description: >-
   the task prompt on workingBranch from /opt/swarm/state.json, runs checks,
   commits, and pushes to origin, then either marks the trace complete or
   publishes event:reviewer. Use after event-found wrote state.json and before
-  the role-prompt final message and write_message.
+  the role-prompt final message.
 ---
 
 # Workflow
 
-Run this after `/opt/swarm/state.json` exists and you are carrying out an accepted coder job. Read that file for `repoUrl`, `workingBranch`, and `traceID`. The task `prompt` (from the event or `event:coder` entry) is the goal. For definition of done, verification, and final message sections, follow `/opt/swarm/role-prompt.md`.
+Run this after `/opt/swarm/state.json` exists and you are carrying out an accepted coder job. Read that file for `repoUrl`, `workingBranch`, and `traceID`. The task `prompt` (from the event or `event:coder` entry) is the goal. For definition of done, verification, and final message sections, follow `~/.claude/CLAUDE.md`.
 
-Do not print `GH_TOKEN` or embed it in logs, commits, or `write_message` bodies.
+Do not print `GH_TOKEN` or embed it in logs, commits, or delegation prompts.
 
 ## Preconditions
 
@@ -75,13 +75,13 @@ Before editing:
 
 ## Implement
 
-- Make the smallest change that satisfies the `prompt` and any notes from `read_messages` on this `traceID`.
+- Make the smallest change that satisfies the `prompt`, including any prior feedback embedded in a delegated `prompt`.
 - Respect reviewer rework in the prompt when `attempt` > 1 or the prompt includes prior feedback.
 - Stay in scope. If the goal is impossible without a guess, stop with `## Blocked` and what you need.
 
 ## Verify, commit, push
 
-Match `/opt/swarm/role-prompt.md`: run the repo's checks, review the diff, commit on `workingBranch`, push to `origin`.
+Match `~/.claude/CLAUDE.md`: run the repo's checks, review the diff, commit on `workingBranch`, push to `origin`.
 
 Configure push auth the same way as clone (token in remote URL or credential helper). Example:
 
@@ -117,7 +117,7 @@ When two tiers conflict, use the **larger** tier (e.g. 2 files but 200 lines →
 
 Run this only when the role prompt **Done** criteria are met: the goal is achieved, the branch is pushed, required checks passed, and `## Blocked` will be `None`. If work is incomplete, blocked, or the goal is not met, skip this section—do not call `complete_event` or `write_reviewer_task`.
 
-Build your **final message** first (see below) so you can reuse it for MCP calls and `write_message`.
+Build your **final message** first (see below) so you can reuse it in `write_reviewer_task` or your closing reply.
 
 You must choose exactly one path:
 
@@ -154,4 +154,4 @@ When unsure between complete and review, prefer `write_reviewer_task` unless the
 
 ## Hand back to the role prompt
 
-Produce the **final message** sections from `/opt/swarm/role-prompt.md` (`## Summary`, `## Branch`, `## Files changed`, `## Verification`, `## Blocked`). In `## Summary`, state your finish choice: `complete_event` (and whether it succeeded), `event:reviewer` published, or neither (incomplete/blocked). Then `event-found` posts that body with `write_message`.
+Produce the **final message** sections from `~/.claude/CLAUDE.md` (`## Summary`, `## Branch`, `## Files changed`, `## Verification`, `## Blocked`). In `## Summary`, state your finish choice: `complete_event` (and whether it succeeded), `event:reviewer` published, or neither (incomplete/blocked).

@@ -1,5 +1,4 @@
 EVENTS = "events"
-MESSAGES = "messages"
 EVENT_CODER = "event:coder"
 EVENT_REVIEWER = "event:reviewer"
 
@@ -26,14 +25,6 @@ def event_fields(
         "prompt": prompt,
         "repoUrl": repo_url,
         "workingBranch": working_branch,
-    }
-
-
-def message_fields(trace_id: str, message_num: str, body: str) -> dict[str, str]:
-    return {
-        "traceID": trace_id,
-        "messageNum": message_num,
-        "body": body,
     }
 
 

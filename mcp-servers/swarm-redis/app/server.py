@@ -8,7 +8,6 @@ from starlette.responses import JSONResponse
 
 from model import (
     EVENTS,
-    MESSAGES,
     STATUS_AVAILABLE,
     STATUS_COMPLETE,
     STATUS_IN_PROGRESS,
@@ -16,7 +15,6 @@ from model import (
     EVENT_REVIEWER,
     event_fields,
     event_status_key,
-    message_fields,
     task_fields,
 )
 from redis_client import get_redis
@@ -71,14 +69,6 @@ end
 redis.call('HSET', KEYS[1], 'status', ARGV[2])
 return {1, ARGV[2]}
 """
-
-def _message_sort_key(entry: dict[str, str]) -> tuple[int, str]:
-    raw = entry.get("messageNum", "")
-    try:
-        return (int(raw), raw)
-    except ValueError:
-        return (10**9, raw)
-
 
 @mcp.tool()
 def publish_event(prompt: str, repo_url: str, working_branch: str) -> dict[str, str]:
@@ -169,34 +159,6 @@ def read_events(after: str = "-") -> list[dict[str, str]]:
         if live:
             entry["status"] = live
     return entries
-
-
-@mcp.tool()
-def write_message(trace_id: str, message_num: str, body: str) -> str:
-    """Append one progress note to the messages stream. Returns the Redis entry id.
-
-    That id is the messageID and is not stored as a field. message_num is the
-    next number on this traceID's board (1, 2, 3, ...).
-    """
-    fields = message_fields(
-        _require(trace_id, "trace_id"),
-        _require(message_num, "message_num"),
-        _require(body, "body"),
-    )
-    return _write(MESSAGES, fields)
-
-
-@mcp.tool()
-def read_messages(trace_id: str) -> list[dict[str, str]]:
-    """Read one trace's message board from the messages stream, ordered by messageNum.
-
-    Each object includes the Redis entry id (the messageID) plus traceID,
-    messageNum, and body.
-    """
-    trace = _require(trace_id, "trace_id")
-    board = [entry for entry in _read(MESSAGES) if entry.get("traceID") == trace]
-    board.sort(key=_message_sort_key)
-    return board
 
 
 @mcp.tool()

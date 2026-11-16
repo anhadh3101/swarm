@@ -44,11 +44,9 @@ Do not write this file under `/workspace`.
 
 ## Work
 
-Read this trace's message board with `read_messages` on the `swarm-redis` server. Use those notes as prior context. An empty board means you are first.
+The `prompt` is the goal (for a delegated job, it may include prior feedback or a handoff summary). The `repoUrl` is the repo. The `workingBranch` is the branch you work on. Apply the **workflow** skill for clone through push, then use the final message format in your role prompt in `~/.claude/CLAUDE.md`.
 
-The `prompt` is the goal. The `repoUrl` is the repo. The `workingBranch` is the branch you work on. Apply the **workflow** skill for clone through push, then use the final message format in your role prompt at `/opt/swarm/role-prompt.md`.
-
-When you stop, append that final message to `messages` with `write_message`. Set `trace_id` from the state file. Set `message_num` to one more than the highest `messageNum` on that board. Set `body` to the final message.
+When you stop, reply with that final message in the structured **Reply** below. Include it in `write_reviewer_task` or record it in `## Summary` when you call `complete_event`; do not post it to a separate Redis stream.
 
 ## Reply
 

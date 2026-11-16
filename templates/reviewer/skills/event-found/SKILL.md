@@ -34,11 +34,11 @@ When you take it, write this file before any other work. This is the one write o
 
 ## Work
 
-Read this trace's message board with `read_messages` on the `swarm-redis` server. Those notes are the implementation summary you review. The `prompt` is the goal. The `repoUrl` is the repo. The `workingBranch` is the branch under review.
+The `prompt` is what you review (for a coder handoff it should include the implementation summary and verification notes). The `repoUrl` is the repo. The `workingBranch` is the branch under review.
 
-Carry out the review and the final message in your role prompt at `/opt/swarm/role-prompt.md`. Do not edit the repo.
+Carry out the review and the final message in your role prompt in `~/.claude/CLAUDE.md`. Do not edit the repo.
 
-When you stop, append that final message to `messages` with `write_message`. Set `trace_id` from the state file. Set `message_num` to one more than the highest `messageNum` on that board. Set `body` to the final message.
+When you stop, reply with that final message in the structured **Reply** below. If you request rework, include your findings in the `prompt` when you publish back to `event:coder`.
 
 ## Reply
 

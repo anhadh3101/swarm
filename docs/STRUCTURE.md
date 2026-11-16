@@ -1,13 +1,12 @@
 # Stream structure
 
-Four Redis streams. `traceID` joins an event to its message board and to any delegated task. Redis does not link the streams. The first `XADD` creates each one. Every field is a string.
+Three Redis streams. `traceID` joins an event to any delegated task. Redis does not link the streams. The first `XADD` creates each one. Every field is a string.
 
-The id Redis returns from `XADD` is the entry id. For a message, that id is the `messageID`. It is not stored again inside the entry.
+The id Redis returns from `XADD` is the entry id. It is not stored again inside the entry.
 
 | Stream | Who writes | Who reads |
 |---|---|---|
 | `events` | Orchestrator | Every agent |
-| `messages` | Any agent | Every agent, filtered to one `traceID` |
 | `event:coder` | Any agent | Coders |
 | `event:reviewer` | Any agent | Reviewers |
 
@@ -27,23 +26,9 @@ Live status is a Redis hash, `event:<traceID>`, with one field `status`. A new e
 
 An agent reads `prompt`, `repoUrl`, and `workingBranch`. If the work matches what that agent does, it takes the task and copies `traceID`, `repoUrl`, and `workingBranch` into `/opt/swarm/state.json`. If it does not, it advances its cursor and leaves the entry untouched.
 
-## `messages`
-
-One flat log. A trace's message board is every entry in `messages` with that `traceID`.
-
-| Field | Value |
-|---|---|
-| `traceID` | The event this note belongs to |
-| `messageNum` | `1`, `2`, `3`, … inside that trace |
-| `body` | What the agent has completed so far |
-
-`messageNum` is per trace. Before posting, read that trace's board and add one to the highest `messageNum`. The Redis entry id orders the whole stream, so it is not a per-board sequence.
-
-Read a board by scanning `messages` and keeping one `traceID`, then sort those entries by `messageNum`.
-
 ## `event:coder` and `event:reviewer`
 
-An agent writes one of these only when it is handing work to that role. The entry carries the same `traceID` so the coder or reviewer can find the event and the message board.
+An agent writes one of these only when it is handing work to that role. The entry carries the same `traceID` so the coder or reviewer can find the event. The delegator's `prompt` carries handoff context (for example the prior agent's final message).
 
 | Field | Value |
 |---|---|
@@ -57,6 +42,6 @@ Coders read only `event:coder`. Reviewers read only `event:reviewer`. Use one co
 ## How a run moves
 
 1. The orchestrator appends one entry to `events`.
-2. Every agent sees it. An agent that can do the work starts, and appends progress to `messages` under that `traceID`.
-3. When that work needs the other role, the agent appends one entry to `event:coder` or `event:reviewer` with the same `traceID`.
-4. The chosen role claims that task, does it, and appends its own progress to `messages`.
+2. Every agent sees it. An agent that can do the work starts on that `traceID`.
+3. When that work needs the other role, the agent appends one entry to `event:coder` or `event:reviewer` with the same `traceID` and a `prompt` that includes what the next role needs.
+4. The chosen role claims that task, does it, and may delegate back or mark the trace complete.

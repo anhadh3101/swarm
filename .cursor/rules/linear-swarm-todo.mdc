@@ -1,0 +1,41 @@
+---
+description: Keep agent-swarm work tracked in Linear project Swarm and docs/TODO.md
+alwaysApply: true
+---
+
+# Linear project Swarm — TODO tracking
+
+Track implementation work for this repo in **Linear**, not only in chat or local notes.
+
+## Where
+
+| Source | Use |
+|--------|-----|
+| **Linear** | [Project Swarm](https://linear.app/anhadhs-personal-workspace/project/swarm-929078a35985) — statuses, ownership, what’s done |
+| **`docs/TODO.md`** | Long-form design, checklists, and “out of scope” — link from Linear issues |
+
+Team: **Anhadh's Personal Workspace** (`ANH`). Project name: **Swarm**.
+
+## When to touch Linear
+
+- At the **start** of a multi-step or non-trivial swarm task: `list_issues` filtered by project **Swarm**; read `docs/TODO.md`.
+- When you **finish** work that maps to a tracked item: move the issue to **Done** (or **Canceled** with a short reason).
+- When you discover **new** follow-up work: create an issue in **Swarm** instead of only appending to chat.
+- When the user asks about progress or TODOs: answer from Linear + `docs/TODO.md`, then update Linear if stale.
+
+## Issue hygiene
+
+- **One issue ≈ one deliverable** (e.g. one checklist row in `docs/TODO.md`), not an entire epic in the title.
+- **Description**: 1–3 sentences + pointer to file/section (e.g. `docs/TODO.md` → Agent identity checklist item 1).
+- **Statuses**: `Todo` / `Backlog` (not started), `In Progress` (active this session), `Done` (merged or verified), `Canceled` / `Duplicate` when appropriate.
+- Do **not** paste secrets (tokens, `.env`) into Linear.
+
+## Sync with `docs/TODO.md`
+
+- If an unchecked checklist item has **no** matching Linear issue, create one in **Swarm** when you begin or when grooming TODOs.
+- When a checklist item is **done**, check the box in `docs/TODO.md` **and** mark the Linear issue **Done** in the same change session when the user expects both kept in sync.
+- Large architecture stays in `docs/TODO.md`; Linear holds **actionable** tasks.
+
+## MCP
+
+Use the **Linear** MCP tools (`list_issues`, `save_issue`, `list_comments`, etc.) with `project: "Swarm"` and team **ANH** as needed.

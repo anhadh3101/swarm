@@ -1,14 +1,42 @@
 # TODO
 
-## Agent identity on messages and delegations
+## Redis MCP (swarm-redis)
 
 ### Goal
 
-Know which agent wrote each message on `messages`, and which container or worker instance produced it—without trusting values the model passes through MCP tool calls.
+Keep the `swarm-redis` MCP server aligned with how coder and reviewer workers use Redis streams and delegation tools.
+
+### Checklist
+
+- [ ] Audit tools in `mcp-servers/swarm-redis/app/server.py` against coder/reviewer skills (`event-found`, `workflow`) and `skills/swarm/SKILL.md`; add or adjust tools/fields where agents still guess or pass untrusted identity.
+- [ ] Document how workers reach the server (stdio vs `streamable-http`), ports, and `REDIS_URL` for local Docker.
+- [ ] Package/run instructions: image build, compose or `docker run`, and how Claude Code registers the MCP server in container.
+- [ ] Reconcile with **Agent identity** below (auth middleware, server-derived `agentID` / `agentRole` on delegations).
+
+## Reviewer + Greptile
+
+### Goal
+
+Use Greptile CLI in the reviewer container for structured code review, authenticated via `GREPTILE_API_KEY` (no host Keychain copy).
+
+### Checklist
+
+- [ ] Add `GREPTILE_API_KEY` to `.env.example` and reviewer Dockerfile header comments (with `ANTHROPIC_API_KEY`, `GH_TOKEN`).
+- [ ] Define when the reviewer runs `greptile review` (e.g. after cloning/checkout on `workingBranch`) in a reviewer skill or `prompt.md` / `CLAUDE.md` workflow.
+- [ ] Document container run: `templates/reviewer/Dockerfile`, image tag, `--env-file .env`, and that Greptile org/repo must already be onboarded in the dashboard.
+- [ ] Smoke-test: `greptile whoami` and `greptile review` inside the reviewer image against a real repo.
+
+## Agent identity and delegations
+
+### Goal
+
+Give each container a stable logical identity (`agentID`, `agentRole`) and attach that identity to swarm writes—without trusting values the model passes through MCP tool calls.
+
+Tracked in Linear: [ANH-9 — Give each container a stable agent ID](https://linear.app/anhadhs-personal-workspace/issue/ANH-9/give-each-container-a-stable-agent-id).
 
 ### Problem
 
-If `agent_id` (or similar) is a parameter on `write_message`, the caller can set it to anything. That is fine for casual debugging but not for trustworthy attribution or audit trails. Container hostname (`$HOSTNAME`) identifies a runtime instance but is not authentication and should not be the sole logical identity.
+If identity fields are tool arguments the model sets, callers can spoof them. That is fine for casual debugging but not for trustworthy attribution or audit trails. Container hostname (`$HOSTNAME`) identifies a runtime instance but is not authentication and should not be the sole logical identity.
 
 ### Recommended model
 
@@ -18,7 +46,7 @@ If `agent_id` (or similar) is a parameter on `write_message`, the caller can set
 | `agentRole` | Role name: `coder`, `reviewer`, `orchestrator` |
 | `instanceID` | Ephemeral container/runtime id, e.g. Docker hostname; optional |
 
-Store these on `messages` stream entries (and consider the same for `from` on `event:coder` / `event:reviewer` instead of a free-text role only).
+Store these on delegated tasks and other swarm writes (for example `from` on `event:coder` / `event:reviewer` should become `fromAgentID` / `fromAgentRole`, not free-text role only).
 
 ### Trust boundary
 
@@ -27,17 +55,17 @@ Store these on `messages` stream entries (and consider the same for `from` on `e
 
 ### Implementation checklist
 
-- [ ] Extend `message_fields` / `write_message` in `mcp-servers/swarm-redis` to persist `agentID`, `agentRole`, and optional `instanceID` on each `messages` entry.
-- [ ] Update `read_messages` docs and agent skills (`event-found`, role prompts) so agents display identity when replying; they should not invent IDs in tool args once server-derived identity exists.
-- [ ] Provision tokens when starting containers (`scripts/run-claude-containers.sh`): generate or assign token + `agentID` + role; pass via env; configure Claude MCP HTTP client headers if supported.
+- [ ] Provision stable `agentID` + `agentRole` per container when starting workers (`scripts/run-claude-containers.sh`): pass via env; document recreate semantics.
+- [ ] Provision tokens when starting containers: generate or assign token tied to that `agentID`; configure Claude MCP HTTP client headers if supported.
 - [ ] Add auth middleware or per-request lookup in `swarm-redis` for `streamable-http` transport; reject writes without a valid token (or fall back to `unknown` only in dev behind an explicit flag).
+- [ ] Extend delegation `task_fields` / `write_*_task` to persist server-derived `agentID`, `agentRole`, and optional `instanceID`; do not accept identity as tool arguments.
 - [ ] Document token registry format (env file, Redis hash `agent:<token>`, or static map for local dev).
-- [ ] Align `STRUCTURE.md` `messages` table with the new fields once implemented.
+- [ ] Align `STRUCTURE.md` delegation tables with the new fields once implemented.
 - [ ] Decide whether delegated tasks should record `fromAgentID` in addition to `from` role.
 
 ### Out of scope (for now)
 
-- Cryptographic signing of message bodies.
+- Cryptographic signing of handoff payloads.
 - Cross-host federation or multi-tenant isolation beyond shared Docker network.
 
 ### Related
