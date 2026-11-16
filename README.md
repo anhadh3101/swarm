@@ -24,7 +24,7 @@ docker compose run --rm --entrypoint codex coder login --device-auth
 #   --entrypoint codex coder login --device-auth
 
 # Start a pipeline (coder → reviewer via orchestrator):
-docker compose exec redis redis-cli XADD tasks:coder '*' \
+docker compose exec redis redis-cli XADD event:coder '*' \
   run_id demo-1 job_id job-1 \
   payload '{"goal":"Add a short README section for this project"}'
 
@@ -37,8 +37,8 @@ The reviewer mounts the **repo root** at `/workspace` (read-only). When using `s
 
 | Stream | Purpose |
 |--------|---------|
-| `tasks:coder` | Coder jobs |
-| `tasks:reviewer` | Reviewer jobs |
+| `event:coder` | Coder jobs |
+| `event:reviewer` | Reviewer jobs |
 | `events:orchestrator` | Worker completions; orchestrator enqueues next stage |
 
 ## Stop

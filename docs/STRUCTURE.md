@@ -8,8 +8,8 @@ The id Redis returns from `XADD` is the entry id. For a message, that id is the 
 |---|---|---|
 | `events` | Orchestrator | Every agent |
 | `messages` | Any agent | Every agent, filtered to one `traceID` |
-| `tasks:coder` | Any agent | Coders |
-| `tasks:reviewer` | Any agent | Reviewers |
+| `event:coder` | Any agent | Coders |
+| `event:reviewer` | Any agent | Reviewers |
 
 ## `events`
 
@@ -17,13 +17,15 @@ One entry is one task. Each agent keeps its own last-seen id and reads every new
 
 | Field | Value |
 |---|---|
-| `traceID` | Id for this run, copied onto every later entry |
-| `startTime` | ISO-8601 time set by the publisher |
-| `turns` | Turn budget, as a decimal string |
+| `traceID` | UUID generated when the event is written, copied onto every later entry |
+| `startTime` | ISO-8601 time when the event is written |
 | `prompt` | The task text from the orchestrator |
 | `repoUrl` | Git remote |
+| `workingBranch` | Branch the work is done on |
 
-An agent reads `prompt` and `repoUrl`. If the work matches what that agent does, it takes the task. If it does not, it advances its cursor and leaves the entry untouched.
+Live status is a Redis hash, `event:<traceID>`, with one field `status`. A new event sets that field to `AVAILABLE`. `claim_event` sets it to `IN_PROGRESS` only while it is `AVAILABLE`. The other value is `COMPLETE`. `read_events` returns this hash value as `status`. The stream entry does not store it.
+
+An agent reads `prompt`, `repoUrl`, and `workingBranch`. If the work matches what that agent does, it takes the task and copies `traceID`, `repoUrl`, and `workingBranch` into `/opt/swarm/state.json`. If it does not, it advances its cursor and leaves the entry untouched.
 
 ## `messages`
 
@@ -39,7 +41,7 @@ One flat log. A trace's message board is every entry in `messages` with that `tr
 
 Read a board by scanning `messages` and keeping one `traceID`, then sort those entries by `messageNum`.
 
-## `tasks:coder` and `tasks:reviewer`
+## `event:coder` and `event:reviewer`
 
 An agent writes one of these only when it is handing work to that role. The entry carries the same `traceID` so the coder or reviewer can find the event and the message board.
 
@@ -50,11 +52,11 @@ An agent writes one of these only when it is handing work to that role. The entr
 | `repoUrl` | Same remote as the event |
 | `from` | Role that delegated it |
 
-Coders read only `tasks:coder`. Reviewers read only `tasks:reviewer`. Use one consumer group per task stream so one worker claims each delegated task.
+Coders read only `event:coder`. Reviewers read only `event:reviewer`. Use one consumer group per task stream so one worker claims each delegated task.
 
 ## How a run moves
 
 1. The orchestrator appends one entry to `events`.
 2. Every agent sees it. An agent that can do the work starts, and appends progress to `messages` under that `traceID`.
-3. When that work needs the other role, the agent appends one entry to `tasks:coder` or `tasks:reviewer` with the same `traceID`.
+3. When that work needs the other role, the agent appends one entry to `event:coder` or `event:reviewer` with the same `traceID`.
 4. The chosen role claims that task, does it, and appends its own progress to `messages`.

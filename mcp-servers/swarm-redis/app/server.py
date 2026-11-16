@@ -1,4 +1,6 @@
 import os
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from mcp.server import FastMCP
 from starlette.requests import Request
@@ -7,9 +9,13 @@ from starlette.responses import JSONResponse
 from model import (
     EVENTS,
     MESSAGES,
-    TASKS_CODER,
-    TASKS_REVIEWER,
+    STATUS_AVAILABLE,
+    STATUS_COMPLETE,
+    STATUS_IN_PROGRESS,
+    EVENT_CODER,
+    EVENT_REVIEWER,
     event_fields,
+    event_status_key,
     message_fields,
     task_fields,
 )
@@ -54,6 +60,18 @@ def _read(stream: str, after: str = "-") -> list[dict[str, str]]:
     return [{"id": entry_id, **fields} for entry_id, fields in rows]
 
 
+CLAIM_SCRIPT = """
+local current = redis.call('HGET', KEYS[1], 'status')
+if current == false then
+  return {0, ''}
+end
+if current ~= ARGV[1] then
+  return {0, current}
+end
+redis.call('HSET', KEYS[1], 'status', ARGV[2])
+return {1, ARGV[2]}
+"""
+
 def _message_sort_key(entry: dict[str, str]) -> tuple[int, str]:
     raw = entry.get("messageNum", "")
     try:
@@ -63,16 +81,73 @@ def _message_sort_key(entry: dict[str, str]) -> tuple[int, str]:
 
 
 @mcp.tool()
-def write_event(trace_id: str, start_time: str, turns: str, prompt: str, repo_url: str) -> str:
-    """Append one task to the events stream. Returns the Redis entry id."""
+def publish_event(prompt: str, repo_url: str, working_branch: str) -> dict[str, str]:
+    """Append one task to the events stream.
+
+    traceID is a new UUID and startTime is the time of this call. The caller
+    supplies prompt, repo_url, and working_branch. Status is stored on the
+    hash event:<traceID> as AVAILABLE. Returns the Redis entry id and traceID.
+    """
+    trace_id = str(uuid4())
+    start_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     fields = event_fields(
-        _require(trace_id, "trace_id"),
-        _require(start_time, "start_time"),
-        _require(turns, "turns"),
+        trace_id,
+        start_time,
         _require(prompt, "prompt"),
         _require(repo_url, "repo_url"),
+        _require(working_branch, "working_branch"),
     )
-    return _write(EVENTS, fields)
+    pipe = get_redis().pipeline()
+    pipe.xadd(EVENTS, fields)
+    
+    key = event_status_key(trace_id=trace_id)
+    pipe.hset(key, "status", STATUS_AVAILABLE)
+    entry_id, _ = pipe.execute()
+    return {"id": entry_id, "traceID": trace_id}
+
+
+@mcp.tool()
+def claim_event(trace_id: str) -> dict[str, str]:
+    """Set the event status to IN_PROGRESS when it is AVAILABLE.
+
+    Status lives on the hash event:<traceID>. Returns claimed true when this
+    call won, otherwise claimed false and the status already stored.
+    """
+    trace = _require(trace_id, "trace_id")
+    won, status = get_redis().eval(
+        CLAIM_SCRIPT,
+        1,
+        event_status_key(trace),
+        STATUS_AVAILABLE,
+        STATUS_IN_PROGRESS,
+    )
+    return {
+        "claimed": "true" if int(won) == 1 else "false",
+        "status": status or "",
+    }
+
+
+@mcp.tool()
+def complete_event(trace_id: str) -> dict[str, str]:
+    """Set the event status to COMPLETE when it is IN_PROGRESS.
+
+    Status lives on the hash event:<traceID>. Returns completed true when this
+    call updated the status, otherwise completed false and the status already
+    stored. Call when the run for this traceID is finished and no further
+    swarm work is required.
+    """
+    trace = _require(trace_id, "trace_id")
+    won, status = get_redis().eval(
+        CLAIM_SCRIPT,
+        1,
+        event_status_key(trace),
+        STATUS_IN_PROGRESS,
+        STATUS_COMPLETE,
+    )
+    return {
+        "completed": "true" if int(won) == 1 else "false",
+        "status": status or "",
+    }
 
 
 @mcp.tool()
@@ -80,9 +155,20 @@ def read_events(after: str = "-") -> list[dict[str, str]]:
     """Read events. Pass the last seen entry id as after to read only newer ones.
 
     after defaults to "-" (the whole stream). Each returned object includes the
-    Redis entry id plus traceID, startTime, turns, prompt, and repoUrl.
+    Redis entry id plus traceID, startTime, prompt, repoUrl, and workingBranch.
+    status is read from the hash event:<traceID> and is AVAILABLE, IN_PROGRESS,
+    or COMPLETE.
     """
-    return _read(EVENTS, after)
+    entries = _read(EVENTS, after)
+    if not entries:
+        return entries
+    pipe = get_redis().pipeline()
+    for entry in entries:
+        pipe.hget(event_status_key(entry["traceID"]), "status")
+    for entry, live in zip(entries, pipe.execute()):
+        if live:
+            entry["status"] = live
+    return entries
 
 
 @mcp.tool()
@@ -115,48 +201,48 @@ def read_messages(trace_id: str) -> list[dict[str, str]]:
 
 @mcp.tool()
 def write_coder_task(trace_id: str, prompt: str, repo_url: str, from_role: str) -> str:
-    """Append one delegated task to tasks:coder. Returns the Redis entry id."""
+    """Append one delegated task to event:coder. Returns the Redis entry id."""
     fields = task_fields(
         _require(trace_id, "trace_id"),
         _require(prompt, "prompt"),
         _require(repo_url, "repo_url"),
         _require(from_role, "from_role"),
     )
-    return _write(TASKS_CODER, fields)
+    return _write(EVENT_CODER, fields)
 
 
 @mcp.tool()
 def read_coder_tasks(after: str = "-") -> list[dict[str, str]]:
-    """Read tasks:coder. Pass the last seen entry id as after to read only newer ones.
+    """Read event:coder. Pass the last seen entry id as after to read only newer ones.
 
     after defaults to "-" (the whole stream). Each object includes the Redis
     entry id plus traceID, prompt, repoUrl, and from. This lists entries; it
     does not claim them.
     """
-    return _read(TASKS_CODER, after)
+    return _read(EVENT_CODER, after)
 
 
 @mcp.tool()
 def write_reviewer_task(trace_id: str, prompt: str, repo_url: str, from_role: str) -> str:
-    """Append one delegated task to tasks:reviewer. Returns the Redis entry id."""
+    """Append one delegated task to event:reviewer. Returns the Redis entry id."""
     fields = task_fields(
         _require(trace_id, "trace_id"),
         _require(prompt, "prompt"),
         _require(repo_url, "repo_url"),
         _require(from_role, "from_role"),
     )
-    return _write(TASKS_REVIEWER, fields)
+    return _write(EVENT_REVIEWER, fields)
 
 
 @mcp.tool()
 def read_reviewer_tasks(after: str = "-") -> list[dict[str, str]]:
-    """Read tasks:reviewer. Pass the last seen entry id as after to read only newer ones.
+    """Read event:reviewer. Pass the last seen entry id as after to read only newer ones.
 
     after defaults to "-" (the whole stream). Each object includes the Redis
     entry id plus traceID, prompt, repoUrl, and from. This lists entries; it
     does not claim them.
     """
-    return _read(TASKS_REVIEWER, after)
+    return _read(EVENT_REVIEWER, after)
 
 
 if __name__ == "__main__":

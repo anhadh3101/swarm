@@ -21,7 +21,8 @@ RUN useradd -m -s /bin/bash agent \
     && chown -R agent:agent /home/agent/.claude /workspace /opt/swarm
 
 COPY prompt.md /opt/swarm/role-prompt.md
-RUN chown agent:agent /opt/swarm/role-prompt.md
+COPY skills/ /opt/swarm/skills/
+RUN chown -R agent:agent /opt/swarm/role-prompt.md /opt/swarm/skills
 
 USER agent
 

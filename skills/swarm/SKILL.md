@@ -108,7 +108,7 @@ The first `/swarm` message is never approval.
 
 ## Publish
 
-After approval, publish one job with the `publish_task` tool on the `swarm-redis` MCP server. That tool appends one entry to `tasks:<role>`. Then stop. Later agents publish the next job. Do not publish when the approved plan says `delegate: none`.
+After approval, publish one job with the `publish_task` tool on the `swarm-redis` MCP server. That tool appends one entry to `event:<role>`. Then stop. Later agents publish the next job. Do not publish when the approved plan says `delegate: none`.
 
 Call it once per handoff:
 
@@ -172,7 +172,7 @@ After you publish, reply with the run and the job you published. If you publishe
 ## Job
 - job_id: <id>
 - role: <role>
-- stream: tasks:<role>
+- stream: event:<role>
 - attempt: <1 or 2>
 - artifact: <previous final message, or none>
 ```

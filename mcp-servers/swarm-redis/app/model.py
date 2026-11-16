@@ -1,16 +1,31 @@
 EVENTS = "events"
 MESSAGES = "messages"
-TASKS_CODER = "tasks:coder"
-TASKS_REVIEWER = "tasks:reviewer"
+EVENT_CODER = "event:coder"
+EVENT_REVIEWER = "event:reviewer"
+
+STATUS_AVAILABLE = "AVAILABLE"
+STATUS_IN_PROGRESS = "IN_PROGRESS"
+STATUS_COMPLETE = "COMPLETE"
+EVENT_STATUSES = (STATUS_AVAILABLE, STATUS_IN_PROGRESS, STATUS_COMPLETE)
 
 
-def event_fields(trace_id: str, start_time: str, turns: str, prompt: str, repo_url: str) -> dict[str, str]:
+def event_status_key(trace_id: str) -> str:
+    return f"event:{trace_id}"
+
+
+def event_fields(
+    trace_id: str,
+    start_time: str,
+    prompt: str,
+    repo_url: str,
+    working_branch: str,
+) -> dict[str, str]:
     return {
         "traceID": trace_id,
         "startTime": start_time,
-        "turns": turns,
         "prompt": prompt,
         "repoUrl": repo_url,
+        "workingBranch": working_branch,
     }
 
 
