@@ -15,7 +15,6 @@ RUN apt-get update \
         git curl ca-certificates ripgrep less gh \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION} \
-    && npm install -g greptile@latest
 
 ENV DISABLE_AUTOUPDATER=1
 
