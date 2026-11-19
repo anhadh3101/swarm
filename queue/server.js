@@ -52,6 +52,7 @@ const server = http.createServer(async (req, res) => {
       try {
         job = JSON.parse(await readBody(req));
       } catch {
+        process.stderr.write("[queue.js] handleChat invalid json\n");
         res.writeHead(400, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: "invalid json" }));
         return;
@@ -67,6 +68,9 @@ const server = http.createServer(async (req, res) => {
       if (!from && ALLOW_ANON) {
         from = null;
       } else if (!from) {
+        process.stderr.write(
+          `[queue.js] handleChat rejected unknown sender ${req.socket.remoteAddress}\n`
+        );
         res.writeHead(403, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: "unknown sender" }));
         return;
@@ -78,6 +82,9 @@ const server = http.createServer(async (req, res) => {
         prompt: job.prompt,
         from,
       });
+      process.stderr.write(
+        `[queue.js] handleChat enqueued from=${from} traceID=${job.traceID} depth=${queue.length}\n`
+      );
       res.writeHead(202, { "content-type": "application/json" });
       res.end(JSON.stringify({ queued: queue.length }));
       return;
@@ -86,6 +93,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/next") {
       // Only this container's Claude should dequeue (curl from inside the container).
       if (!isLocalhost(req.socket.remoteAddress)) {
+        process.stderr.write(
+          `[queue.js] handleNext forbidden ${req.socket.remoteAddress}\n`
+        );
         res.writeHead(403, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: "forbidden" }));
         return;
@@ -95,14 +105,21 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
       }
+      const job = queue.shift();
+      process.stderr.write(
+        `[queue.js] handleNext dequeued from=${job.from} traceID=${job.traceID} depth=${queue.length}\n`
+      );
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(queue.shift()));
+      res.end(JSON.stringify(job));
       return;
     }
 
     res.writeHead(404);
     res.end();
-  } catch {
+  } catch (err) {
+    process.stderr.write(
+      `[queue.js] handleRequest internal_error ${err?.message ?? err}\n`
+    );
     res.writeHead(500, { "content-type": "application/json" });
     res.end(JSON.stringify({ error: "internal_error" }));
   }
@@ -110,5 +127,5 @@ const server = http.createServer(async (req, res) => {
 
 const port = Number(process.env.QUEUE_PORT || 8080);
 server.listen(port, "0.0.0.0", () => {
-  process.stderr.write(`[queue] listening on 0.0.0.0:${port}\n`);
+  process.stderr.write(`[queue.js] listen on 0.0.0.0:${port}\n`);
 });

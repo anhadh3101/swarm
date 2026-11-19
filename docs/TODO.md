@@ -55,7 +55,7 @@ Store these on delegated tasks and other swarm writes (for example `from` on `ev
 
 ### Implementation checklist
 
-- [ ] Provision stable `agentID` + `agentRole` per container when starting workers (`scripts/run-claude-containers.sh`): pass via env; document recreate semantics.
+- [x] Provision stable `agentID` + `agentRole` per container when starting workers (`scripts/run-claude-containers.sh`): pass via env; document recreate semantics. *(Done: `SWARM_CONTAINER_ID` injected per run in `run-claude-containers.sh`; new ID each start with `--rm`.)*
 - [ ] Provision tokens when starting containers: generate or assign token tied to that `agentID`; configure Claude MCP HTTP client headers if supported.
 - [ ] Add auth middleware or per-request lookup in `swarm-redis` for `streamable-http` transport; reject writes without a valid token (or fall back to `unknown` only in dev behind an explicit flag).
 - [ ] Extend delegation `task_fields` / `write_*_task` to persist server-derived `agentID`, `agentRole`, and optional `instanceID`; do not accept identity as tool arguments.
