@@ -9,7 +9,7 @@ description: >-
 
 # Workflow
 
-The request gives you `traceID`, `repoUrl`, `workingBranch`, and `prompt`. It may also give `targetBranch` and `sender`. The `prompt` is the goal and the coder's implementation summary. The final message sections are in `~/.claude/CLAUDE.md`.
+Read `/opt/swarm/state.json` for `traceID`, `repoUrl`, `workingBranch`, `prompt`, and `sender`. Use `sender` when it is set. The request may also give `targetBranch`. The `prompt` is the goal and the coder's implementation summary. The final message sections are in `~/.claude/CLAUDE.md`.
 
 You are read-only toward the repository. Do not edit tracked files, apply patches, commit, push, force-push, or open a pull request.
 

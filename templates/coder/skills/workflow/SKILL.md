@@ -4,13 +4,13 @@ description: >-
   Clones repoUrl into /workspace with GH_TOKEN, explores the repo, implements
   the task prompt on workingBranch from /opt/swarm/state.json, runs checks,
   commits, and pushes to origin, then either marks the trace complete or
-  publishes event:reviewer. Use after event-found wrote state.json and before
+  publishes event:reviewer. Use after find-event wrote state.json and before
   the role-prompt final message.
 ---
 
 # Workflow
 
-Run this after `/opt/swarm/state.json` exists and you are carrying out an accepted coder job. Read that file for `repoUrl`, `workingBranch`, and `traceID`. The task `prompt` (from the event or `event:coder` entry) is the goal. For definition of done, verification, and final message sections, follow `~/.claude/CLAUDE.md`.
+Run this after `/opt/swarm/state.json` exists and you are carrying out an accepted coder job. Read that file for `repoUrl`, `workingBranch`, `traceID`, and `prompt`. The `prompt` in that file is the goal. For definition of done, verification, and final message sections, follow `~/.claude/CLAUDE.md`.
 
 Do not print `GH_TOKEN` or embed it in logs, commits, or delegation prompts.
 

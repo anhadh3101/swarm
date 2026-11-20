@@ -16,6 +16,7 @@ REPO_ROOT="$(pwd)"
 docker_run_claude() {
   local image="$1"
   local role="$2"
+  local skill="$3"
   local suffix
   suffix="$(uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-' | cut -c1-8)"
   local container_id="${role}-${suffix}"
@@ -27,16 +28,16 @@ docker_run_claude() {
     -e CLAUDE_CONFIG_DIR=/home/agent/.claude \
     -e "SWARM_CONTAINER_ID=${container_id}" \
     "${image}" \
-    bash -lc 'node /opt/swarm/queue.js &
-exec claude --dangerously-skip-permissions "/loop 1m /check-for-tasks"'
+    bash -lc "node /opt/swarm/queue.js &
+exec claude --dangerously-skip-permissions \"/loop 1m /${skill}\""
 }
 
 case "${1:-}" in
   coder)
-    docker_run_claude swarm-coder coder
+    docker_run_claude swarm-coder coder find-event
     ;;
   reviewer)
-    docker_run_claude swarm-reviewer reviewer
+    docker_run_claude swarm-reviewer reviewer find-event
     ;;
   *)
     echo "Usage: $0 {coder|reviewer}" >&2

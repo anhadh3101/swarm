@@ -8,23 +8,26 @@ Keep the `swarm-redis` MCP server aligned with how coder and reviewer workers us
 
 ### Checklist
 
-- [ ] Audit tools in `mcp-servers/swarm-redis/app/server.py` against coder/reviewer skills (`event-found`, `workflow`) and `skills/swarm/SKILL.md`; add or adjust tools/fields where agents still guess or pass untrusted identity.
+- [ ] Audit tools in `mcp-servers/swarm-redis/app/server.py` against coder/reviewer skills (`find-event`, `workflow`) and `skills/swarm/SKILL.md`; add or adjust tools/fields where agents still guess or pass untrusted identity.
 - [ ] Document how workers reach the server (stdio vs `streamable-http`), ports, and `REDIS_URL` for local Docker.
 - [ ] Package/run instructions: image build, compose or `docker run`, and how Claude Code registers the MCP server in container.
 - [ ] Reconcile with **Agent identity** below (auth middleware, server-derived `agentID` / `agentRole` on delegations).
 
-## Reviewer + Greptile
+## Reviewer + Claude Code `/review`
 
 ### Goal
 
-Use Greptile CLI in the reviewer container for structured code review, authenticated via `GREPTILE_API_KEY` (no host Keychain copy).
+Use Claude Code’s built-in `/review` skill in the reviewer container for structured code review, authenticated with `ANTHROPIC_API_KEY` only (no Greptile, CodeRabbit, or third-party review APIs).
+
+Tracked in Linear: [ANH-8 — Reviewer agent: Claude Code /review workflow](https://linear.app/anhadhs-personal-workspace/issue/ANH-8/reviewer-agent-claude-code-review-workflow).
 
 ### Checklist
 
-- [ ] Add `GREPTILE_API_KEY` to `.env.example` and reviewer Dockerfile header comments (with `ANTHROPIC_API_KEY`, `GH_TOKEN`).
-- [ ] Define when the reviewer runs `greptile review` (e.g. after cloning/checkout on `workingBranch`) in a reviewer skill or `prompt.md` / `CLAUDE.md` workflow.
-- [ ] Document container run: `templates/reviewer/Dockerfile`, image tag, `--env-file .env`, and that Greptile org/repo must already be onboarded in the dashboard.
-- [ ] Smoke-test: `greptile whoami` and `greptile review` inside the reviewer image against a real repo.
+- [x] Define checkout, review, confirm, and handoff in `templates/reviewer/skills/workflow/SKILL.md` and `templates/reviewer/prompt.md` (`/review`, not `/code-review`; no `complete_event`; approved → coder opens PR).
+- [ ] Document container run: `templates/reviewer/Dockerfile`, image tag, `--env-file .env` (`ANTHROPIC_API_KEY`, `GH_TOKEN`), and rebuild after template changes so the image is not stale.
+- [ ] Document how `run-claude-containers.sh` mounts `claude-swarm` over `~/.claude` (template skills live in the image unless the volume is omitted or skills are re-seeded).
+- [ ] Smoke-test: `docker build -t swarm-reviewer templates/reviewer`, clone a branch in `/workspace`, run `claude -p "/review high …"` per the workflow skill against a real repo.
+- [ ] Wire `find-event` / queue polling to the new workflow when peer handoffs are ready (`targetBranch`, `sender`).
 
 ## Agent identity and delegations
 
